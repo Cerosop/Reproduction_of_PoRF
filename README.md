@@ -35,3 +35,14 @@ exp_dtu
         ...
 
 ```
+
+## Setup
+```
+git clone https://github.com/ActiveVisionLab/porf.git
+cd porf
+
+conda create -n porf_reproduction python=3.9
+conda activate porf_reproduction
+conda install pytorch==1.13.1 torchvision==0.14.1 pytorch-cuda=11.7 -c pytorch -c nvidia
+pip install -r requirements.txt
+```
