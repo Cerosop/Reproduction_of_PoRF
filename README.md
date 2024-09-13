@@ -38,7 +38,7 @@ exp_dtu
 
 ## Setup
 ```
-git clone https://github.com/ActiveVisionLab/porf.git
+git clone https://github.com/Cerosop/Reproduction_of_PoRF.git
 cd porf
 
 conda create -n porf_reproduction python=3.9
