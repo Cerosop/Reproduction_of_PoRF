@@ -122,17 +122,28 @@ class SDFNetwork(nn.Module):
     def sdf(self, x):
         return self.forward(x)[:, :1]
 
-    def gradient(self, x):
+    def gradient(self, x, is_no_grad=False):
         x.requires_grad_(True)
         y = self.sdf(x)
         d_output = torch.ones_like(y, requires_grad=False, device=y.device)
-        gradients = torch.autograd.grad(
-            outputs=y,
-            inputs=x,
-            grad_outputs=d_output,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True)[0]
+        
+        if is_no_grad:
+            gradients = torch.autograd.grad(
+                outputs=y,
+                inputs=x,
+                grad_outputs=d_output,
+                create_graph=False,
+                retain_graph=False,
+                only_inputs=True)[0]
+        else:
+            gradients = torch.autograd.grad(
+                outputs=y,
+                inputs=x,
+                grad_outputs=d_output,
+                create_graph=True,
+                retain_graph=True,
+                only_inputs=True)[0]
+            
         return gradients.unsqueeze(1)
 
 

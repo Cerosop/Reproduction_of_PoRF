@@ -13,10 +13,8 @@ from export_colmap_matches import export_colmap_matches
 from train import train
 from noise_cancel import noise_cancel
 
-en = os.environ
-for key in en:
-    print(f"{key}: {en[key]}")
 
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
 class FolderSelectorApp:
     def __init__(self, root):

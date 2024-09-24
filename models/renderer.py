@@ -100,16 +100,20 @@ def extract_fields(bound_min, bound_max, resolution, query_func):
 def extract_geometry(bound_min, bound_max, resolution, threshold, query_func):
     print('threshold: {}'.format(threshold))
     u = extract_fields(bound_min, bound_max, resolution, query_func)
+    
     vertices, triangles = mcubes.marching_cubes(u, threshold)
+    from skimage import measure
+    _, _, normals, _ = measure.marching_cubes(u, threshold)
+    
     b_max_np = bound_max
     b_min_np = bound_min
 
     vertices = vertices / (resolution - 1.0) * \
         (b_max_np - b_min_np)[None, :] + b_min_np[None, :]
-    return vertices, triangles
+    return vertices, triangles, normals
 
 
-def sample_pdf(bins, weights, n_samples, det=False):
+def sample_pdf(bins3, weights, n_samples, det=False):
     # This implementation is from NeRF
     # Get pdf
     weights = weights + 1e-5  # prevent nans
@@ -133,7 +137,7 @@ def sample_pdf(bins, weights, n_samples, det=False):
 
     matched_shape = [inds_g.shape[0], inds_g.shape[1], cdf.shape[-1]]
     cdf_g = torch.gather(cdf.unsqueeze(1).expand(matched_shape), 2, inds_g)
-    bins_g = torch.gather(bins.unsqueeze(1).expand(matched_shape), 2, inds_g)
+    bins_g = torch.gather(bins3.unsqueeze(1).expand(matched_shape), 2, inds_g)
 
     denom = (cdf_g[..., 1] - cdf_g[..., 0])
     denom = torch.where(denom < 1e-5, torch.ones_like(denom), denom)

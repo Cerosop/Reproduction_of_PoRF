@@ -1,6 +1,7 @@
 import os
 import logging
 import argparse
+import random
 import numpy as np
 import cv2 as cv
 import trimesh
@@ -216,8 +217,8 @@ class PoseRunner:
             self.update_learning_rate()
 
         self.save_checkpoint()
-        self.validate_image()
         self.validate_mesh()
+        self.validate_image()
 
     def update_image_index(self):
         self.img_idx = np.random.randint(self.dataset.n_images)
@@ -327,22 +328,67 @@ class PoseRunner:
                            normal_img[..., i])
 
     def validate_mesh(self, world_space=True, resolution=256, threshold=0.0):
+        # 生出面的顏色、顏色平滑、換dataset
         bound_min = self.dataset.object_bbox_min
         bound_max = self.dataset.object_bbox_max
-
-        vertices, triangles =\
-            self.renderer.extract_geometry(
-                bound_min, bound_max, resolution=resolution, threshold=threshold)
-        os.makedirs(os.path.join(self.base_exp_dir, 'meshes'), exist_ok=True)
-
+        
+        
+            
+        with torch.no_grad():
+            vertices, triangles, normals =\
+                self.renderer.extract_geometry(
+                    bound_min, bound_max, resolution=resolution, threshold=threshold)
+            os.makedirs(os.path.join(self.base_exp_dir, 'meshes'), exist_ok=True)
+            
         if world_space:
-            vertices = vertices * \
-                self.dataset.scale_mats_np[0][0, 0] + \
-                self.dataset.scale_mats_np[0][:3, 3][None]
-
-        mesh = trimesh.Trimesh(vertices, triangles)
-        mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+            vertices_w = vertices * \
+            self.dataset.scale_mats_np[0][0, 0] + \
+            self.dataset.scale_mats_np[0][:3, 3][None]
+    
+        mesh = trimesh.Trimesh(vertices_w, triangles)
+        mesh.export(os.path.join(self.base_exp_dir, 'meshes',  
                     '{:0>8d}.ply'.format(self.iter_step)))
+        
+        with torch.no_grad():
+            pts = torch.tensor(vertices).to(torch.float32)
+            sdf_nn_output = self.sdf_network(pts)
+            sdf_features = sdf_nn_output[:, 1:]
+
+        gradients = self.sdf_network.gradient(pts, True).squeeze()
+        
+        with torch.no_grad():
+            normals *= -1
+            sampled_color3 = self.render_network(pts,
+                                        gradients,
+                                        torch.tensor(normals.copy()).to(torch.float32),
+                                        sdf_features).detach().cpu().numpy()
+
+            mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color3[:, [2, 1, 0]]))
+            mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                        '{:0>8d}4.ply'.format(self.iter_step)))
+            
+            sampled_color = self.render_network(pts,
+                                        gradients,
+                                        torch.tensor(np.random.rand(pts.shape[0], 3) * 2 - 1).to(torch.float32),
+                                        sdf_features).detach().cpu().numpy()
+            
+            mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color[:, [2, 1, 0]]))
+            mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                        '{:0>8d}2.ply'.format(self.iter_step)))
+        
+        
+        
+        normals = trimesh.Trimesh(vertices, triangles).vertex_normals
+        if normals.shape == pts.shape:
+            with torch.no_grad():
+                sampled_color4 = self.render_network(pts,
+                                            gradients,
+                                            torch.tensor(normals.copy()).to(torch.float32),
+                                            sdf_features).detach().cpu().numpy()
+            
+            mesh = trimesh.Trimesh(vertices, triangles, vertex_colors=(sampled_color4[:, [2, 1, 0]]))
+            mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                        '{:0>8d}5.ply'.format(self.iter_step)))
 
         logging.info('End')
 
@@ -419,3 +465,11 @@ def train(case_name):
 # python程式都是0到n-1
 # colamp都是1-n
 
+
+if __name__ == "__main__":
+    vertices = np.random.rand(100, 3)
+    triangles = np.random.randint(0, 100, size=(100, 3))
+    vertex_colors = list(np.array([[0.1 + i * 0.005, 0, 0.6 - i * 0.005] for i in range(100)]))
+    mesh = trimesh.Trimesh(vertices=vertices, faces=triangles, vertex_colors=vertex_colors)
+    # mesh = trimesh.Trimesh(np.array([[np.random.rand(), np.random.rand(), np.random.rand()] for i in range(100)]), np.array([[np.random.rand(), np.random.rand(), np.random.rand()] for i in range(100)]), vertex_colors=list(np.array([[100.2, 100, 100] for i in range(100)])))
+    mesh.export("D:/Desktop/project/exp_dtu/images14/dtu_sift_porf/meshes/test.ply")
