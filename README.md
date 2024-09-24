@@ -1,8 +1,8 @@
 # Reproduction_of_PoRF
 Reproduction of PoRF and use it on lab`s digital theater
 
-# Usage
-## Data Convention
+## Usage
+### Data Convention
 The data will be organized as follows:
 ```
 porf_data
@@ -36,7 +36,7 @@ exp_dtu
 
 ```
 
-## Setup
+### Setup
 ```
 git clone https://github.com/Cerosop/Reproduction_of_PoRF.git
 cd porf
@@ -46,3 +46,11 @@ conda activate porf_reproduction
 conda install pytorch==1.13.1 torchvision==0.14.1 pytorch-cuda=11.7 -c pytorch -c nvidia
 pip install -r requirements.txt
 ```
+
+### Running
+```
+python surface.py
+```
+
+## Acknowledgement
+Some code snippets are borrowed from [PoRF](https://github.com/ActiveVisionLab/porf). Thanks for these great projects.
