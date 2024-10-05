@@ -103,14 +103,14 @@ def extract_geometry(bound_min, bound_max, resolution, threshold, query_func):
     
     vertices, triangles = mcubes.marching_cubes(u, threshold)
     from skimage import measure
-    _, _, normals, _ = measure.marching_cubes(u, threshold)
+    vertices2, triangles2, normals, _ = measure.marching_cubes(u, threshold)
     
     b_max_np = bound_max
     b_min_np = bound_min
 
     vertices = vertices / (resolution - 1.0) * \
         (b_max_np - b_min_np)[None, :] + b_min_np[None, :]
-    return vertices, triangles, normals
+    return vertices, triangles, normals, vertices2, triangles2
 
 
 def sample_pdf(bins3, weights, n_samples, det=False):

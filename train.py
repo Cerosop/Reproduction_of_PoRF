@@ -332,10 +332,9 @@ class PoseRunner:
         bound_min = self.dataset.object_bbox_min
         bound_max = self.dataset.object_bbox_max
         
-        
             
         with torch.no_grad():
-            vertices, triangles, normals =\
+            vertices, triangles, normals, vertices2, triangles2 =\
                 self.renderer.extract_geometry(
                     bound_min, bound_max, resolution=resolution, threshold=threshold)
             os.makedirs(os.path.join(self.base_exp_dir, 'meshes'), exist_ok=True)
@@ -344,51 +343,113 @@ class PoseRunner:
             vertices_w = vertices * \
             self.dataset.scale_mats_np[0][0, 0] + \
             self.dataset.scale_mats_np[0][:3, 3][None]
+            
+            vertices_w2 = vertices2 * \
+            self.dataset.scale_mats_np[0][0, 0] + \
+            self.dataset.scale_mats_np[0][:3, 3][None]
     
         mesh = trimesh.Trimesh(vertices_w, triangles)
         mesh.export(os.path.join(self.base_exp_dir, 'meshes',  
                     '{:0>8d}.ply'.format(self.iter_step)))
-        
-        with torch.no_grad():
-            pts = torch.tensor(vertices).to(torch.float32)
-            sdf_nn_output = self.sdf_network(pts)
-            sdf_features = sdf_nn_output[:, 1:]
-
-        gradients = self.sdf_network.gradient(pts, True).squeeze()
-        
-        with torch.no_grad():
-            normals *= -1
-            sampled_color3 = self.render_network(pts,
-                                        gradients,
-                                        torch.tensor(normals.copy()).to(torch.float32),
-                                        sdf_features).detach().cpu().numpy()
-
-            mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color3[:, [2, 1, 0]]))
-            mesh.export(os.path.join(self.base_exp_dir, 'meshes',
-                        '{:0>8d}4.ply'.format(self.iter_step)))
-            
-            sampled_color = self.render_network(pts,
-                                        gradients,
-                                        torch.tensor(np.random.rand(pts.shape[0], 3) * 2 - 1).to(torch.float32),
-                                        sdf_features).detach().cpu().numpy()
-            
-            mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color[:, [2, 1, 0]]))
-            mesh.export(os.path.join(self.base_exp_dir, 'meshes',
-                        '{:0>8d}2.ply'.format(self.iter_step)))
+    
+        mesh = trimesh.Trimesh(vertices_w2, triangles2)
+        mesh.export(os.path.join(self.base_exp_dir, 'meshes',  
+                    '{:0>8d}2.ply'.format(self.iter_step)))
         
         
-        
-        normals = trimesh.Trimesh(vertices, triangles).vertex_normals
-        if normals.shape == pts.shape:
+        if vertices.shape == normals.shape:
             with torch.no_grad():
-                sampled_color4 = self.render_network(pts,
+                pts = torch.tensor(vertices.copy()).to(torch.float32)
+                sdf_nn_output = self.sdf_network(pts)
+                sdf_features = sdf_nn_output[:, 1:]
+            
+            gradients = self.sdf_network.gradient(pts, True).squeeze()
+            
+            with torch.no_grad():
+                normals *= -1
+                sampled_color3 = self.render_network(pts,
                                             gradients,
                                             torch.tensor(normals.copy()).to(torch.float32),
                                             sdf_features).detach().cpu().numpy()
+
+                mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color3[:, [2, 1, 0]]))
+                mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                            '{:0>8d}4.ply'.format(self.iter_step)))
+                
+                sampled_color = self.render_network(pts,
+                                            gradients,
+                                            torch.tensor(np.random.rand(pts.shape[0], 3) * 2 - 1).to(torch.float32),
+                                            sdf_features).detach().cpu().numpy()
+                
+                mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color[:, [2, 1, 0]]))
+                mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                            '{:0>8d}2.ply'.format(self.iter_step)))
+        
+        else:
+            with torch.no_grad():
+                pts = torch.tensor(vertices2.copy()).to(torch.float32)
+                sdf_nn_output = self.sdf_network(pts)
+                sdf_features = sdf_nn_output[:, 1:]
+
+            gradients = self.sdf_network.gradient(pts, True).squeeze()
             
-            mesh = trimesh.Trimesh(vertices, triangles, vertex_colors=(sampled_color4[:, [2, 1, 0]]))
+            with torch.no_grad():
+                normals *= -1
+                sampled_color3 = self.render_network(pts,
+                                            gradients,
+                                            torch.tensor(normals.copy()).to(torch.float32),
+                                            sdf_features).detach().cpu().numpy()
+
+                mesh = trimesh.Trimesh(vertices_w2, triangles2, vertex_colors=(sampled_color3[:, [2, 1, 0]]))
+                mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                            '{:0>8d}4.ply'.format(self.iter_step)))
+                
+                sampled_color = self.render_network(pts,
+                                            gradients,
+                                            torch.tensor(np.random.rand(pts.shape[0], 3) * 2 - 1).to(torch.float32),
+                                            sdf_features).detach().cpu().numpy()
+                
+                mesh = trimesh.Trimesh(vertices_w2, triangles2, vertex_colors=(sampled_color[:, [2, 1, 0]]))
+                mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                            '{:0>8d}2.ply'.format(self.iter_step)))
+                
+                
+                
+            
+        
+        
+        
+        normals2 = trimesh.Trimesh(vertices, triangles).vertex_normals
+        if normals2.shape == vertices.shape:
+            with torch.no_grad():
+                sampled_color4 = self.render_network(pts,
+                                            gradients,
+                                            torch.tensor(normals2.copy()).to(torch.float32),
+                                            sdf_features).detach().cpu().numpy()
+            
+            mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color4[:, [2, 1, 0]]))
             mesh.export(os.path.join(self.base_exp_dir, 'meshes',
                         '{:0>8d}5.ply'.format(self.iter_step)))
+            
+            
+        if vertices.shape != normals.shape:    
+            with torch.no_grad():
+                pts = torch.tensor(vertices.copy()).to(torch.float32)
+                sdf_nn_output = self.sdf_network(pts)
+                sdf_features = sdf_nn_output[:, 1:]
+            
+            gradients = self.sdf_network.gradient(pts, True).squeeze()
+            
+            with torch.no_grad():
+                normals *= -1
+                sampled_color3 = self.render_network(pts,
+                                            gradients,
+                                            torch.tensor(normals[:pts.shape[0]].copy()).to(torch.float32),
+                                            sdf_features).detach().cpu().numpy()
+
+                mesh = trimesh.Trimesh(vertices_w, triangles, vertex_colors=(sampled_color3[:, [2, 1, 0]]))
+                mesh.export(os.path.join(self.base_exp_dir, 'meshes',
+                            '{:0>8d}42.ply'.format(self.iter_step)))
 
         logging.info('End')
 
